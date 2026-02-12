@@ -10,6 +10,7 @@ FLAG_FOR_USERS_SIGNATURE (8)
 FLAG_FOR_TRANSMITTAL_TO_USER (16)
 FLAG_HAS_URL_FOR_DOWNLOAD (32)</code></pre>
     </div>
+    <p class="ref-desc" style="margin-top:8px;"><strong>Note:</strong> FLAG_HAS_SIGNATURE and FLAG_FOR_USERS_SIGNATURE are mutually exclusive.</p>
   </div>
 
   <div class="ref-card">
@@ -43,6 +44,32 @@ FLAG_HAS_URL_FOR_DOWNLOAD (32)</code></pre>
       <code>iJitWFN8PY37GrBVtF38HyftG8WohWipbL</code>
       <button class="copy-btn" type="button" data-copy="iJitWFN8PY37GrBVtF38HyftG8WohWipbL" title="Copy">Copy</button>
     </div>
+  </div>
+
+  <div class="ref-card">
+    <h3>DataPacket Signature</h3>
+    <p class="ref-desc">When FLAG_HAS_SIGNATURE is set, you must sign the DataPacketRequestDetails before generating the QR code. Click "Sign DataPacket" to sign with the selected VerusID.</p>
+    <p class="ref-desc" style="margin-top:8px;">The signature data is generated using the <code>signdata</code> RPC endpoint and converted to a VerifiableSignatureData object.</p>
+  </div>
+
+  <div class="ref-card">
+    <h3>Download URL</h3>
+    <p class="ref-desc">When FLAG_HAS_URL_FOR_DOWNLOAD is set, enter a URL where data can be downloaded. The Signable Objects JSON will be auto-generated with a DataDescriptor containing a CrossChainDataRef URLRef.</p>
+    <div class="ref-snippet">
+<pre><code>[{
+  "version": 1,
+  "objectdata": {
+    "iP3euVSzNcXUrLNHnQnR9G6q8jeYuGSxgw": {
+      "version": 1,
+      "flags": 0,
+      "datahash": "",
+      "url": "https://example.com/data.json",
+      "type": 2
+    }
+  }
+}]</code></pre>
+    </div>
+    <p class="ref-desc" style="margin-top:8px;">The key <code>iP3euVSzNcXUrLNHnQnR9G6q8jeYuGSxgw</code> is the CrossChainDataRefKey VDXF ID. When this flag is set, only the URL-based DataDescriptor is allowed.</p>
   </div>
 
   <div class="ref-card">

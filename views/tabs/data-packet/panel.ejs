@@ -21,12 +21,12 @@
             <label class="checkbox-label">
               <input id="data-packet-flag-has-signature" name="flagHasSignature" type="checkbox" />
               Has Signature
-              <span class="help">Request includes a signature reference.</span>
+              <span class="help">Request includes a signature reference. (Mutually exclusive with For User's Signature)</span>
             </label>
             <label class="checkbox-label">
               <input id="data-packet-flag-for-users-signature" name="flagForUsersSignature" type="checkbox" />
               For User's Signature
-              <span class="help">Request the user's signature on the data.</span>
+              <span class="help">Request the user's signature on the data. (Mutually exclusive with Has Signature)</span>
             </label>
             <label class="checkbox-label">
               <input id="data-packet-flag-for-transmittal" name="flagForTransmittalToUser" type="checkbox" />
@@ -40,10 +40,25 @@
             </label>
           </fieldset>
 
-          <label>
-            Signable Objects JSON <span class="tag optional">optional</span>
+          <div id="data-packet-url-group" hidden>
+            <label>
+              Download URL <span class="tag required">required when flag set</span>
+              <input id="data-packet-download-url" name="downloadUrl" type="url" placeholder="https://example.com/data.json" />
+              <span class="help">URL where the data can be downloaded from. This will generate the Signable Objects below.</span>
+            </label>
+            <div id="data-packet-datahash-group" hidden>
+              <label>
+                Data Hash <span class="tag required">required when signing</span>
+                <input id="data-packet-datahash" name="dataHash" type="text" placeholder="64 hex characters (32 bytes)" maxlength="64" pattern="[0-9a-fA-F]{64}" />
+                <span class="help">32-byte hash (64 hex characters) of the data at the URL. Required when both Has Signature and Has URL are set.</span>
+              </label>
+            </div>
+          </div>
+
+          <label id="data-packet-signable-objects-label">
+            Signable Objects JSON <span id="data-packet-signable-objects-tag" class="tag optional">optional</span>
             <textarea id="data-packet-signable-objects" name="signableObjects" rows="6">[{"version": 1, "label": "example", "objectdata": "0011223344", "flags": 1}]</textarea>
-            <span class="help">Array of DataDescriptor objects. Each needs: version, label, objectdata (hex), flags.</span>
+            <span id="data-packet-signable-objects-help" class="help">Array of DataDescriptor objects. Each needs: version, label, objectdata (hex), flags.</span>
           </label>
 
           <div id="data-packet-statements-group" hidden>
@@ -63,6 +78,27 @@
               </div>
               <span class="help">Unique i-address identifier for this request.</span>
             </label>
+          </div>
+
+          <div id="data-packet-signature-group" hidden>
+            <label>
+              DataPacket Signature <span class="tag required">required when flag set</span>
+              <div class="input-with-action">
+                <button id="data-packet-sign-button" type="button">Sign DataPacket</button>
+                <span id="data-packet-sign-status" class="status" aria-live="polite"></span>
+              </div>
+              <span class="help">Sign the DataPacketRequestDetails with the selected VerusID.</span>
+            </label>
+            <div id="data-packet-signature-result" hidden>
+              <div class="signature-status">
+                <span class="tick-icon">&#10003;</span>
+                <span>Signed successfully</span>
+              </div>
+              <label>
+                Signature Data (JSON)
+                <textarea id="data-packet-signature-json" rows="8" readonly></textarea>
+              </label>
+            </div>
           </div>
 
           <label>

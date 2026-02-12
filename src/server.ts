@@ -1,7 +1,7 @@
 import * as path from "path";
 import express = require("express");
 import { VerusIdInterface } from "verusid-ts-client";
-import { generateQr, generateAuthQr, generateInvoiceQr, generateAppEncryptionQr, generateDataPacketQr } from "./routes";
+import { generateQr, generateAuthQr, generateInvoiceQr, generateAppEncryptionQr, generateDataPacketQr, signDataPacket } from "./routes";
 import {
   SYSTEM_ID_TESTNET,
   requireString,
@@ -218,6 +218,7 @@ app.post("/api/generate-auth-qr", generateAuthQr);
 app.post("/api/generate-invoice-qr", generateInvoiceQr);
 app.post("/api/generate-app-encryption-qr", generateAppEncryptionQr);
 app.post("/api/generate-data-packet-qr", generateDataPacketQr);
+app.post("/api/sign-data-packet", signDataPacket);
 
 const portEnv = process.env.UI_PORT ?? process.env.PORT;
 const port = portEnv ? parseNumber(portEnv, "UI_PORT") : 3000;

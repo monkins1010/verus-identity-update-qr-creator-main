@@ -1059,8 +1059,28 @@
     const requestIdGenerateButton = document.getElementById("data-packet-request-id-generate");
     const flagHasRequestIdCheckbox = document.getElementById("data-packet-flag-has-request-id");
     const flagHasStatementsCheckbox = document.getElementById("data-packet-flag-has-statements");
+    const flagHasSignatureCheckbox = document.getElementById("data-packet-flag-has-signature");
+    const flagForUsersSignatureCheckbox = document.getElementById("data-packet-flag-for-users-signature");
+    const flagHasUrlCheckbox = document.getElementById("data-packet-flag-has-url");
     const requestIdGroup = document.getElementById("data-packet-request-id-group");
     const statementsGroup = document.getElementById("data-packet-statements-group");
+    const signatureGroup = document.getElementById("data-packet-signature-group");
+    const urlGroup = document.getElementById("data-packet-url-group");
+    const downloadUrlInput = document.getElementById("data-packet-download-url");
+    const datahashGroup = document.getElementById("data-packet-datahash-group");
+    const datahashInput = document.getElementById("data-packet-datahash");
+    const signableObjectsTextarea = document.getElementById("data-packet-signable-objects");
+    const signableObjectsTag = document.getElementById("data-packet-signable-objects-tag");
+    const signableObjectsHelp = document.getElementById("data-packet-signable-objects-help");
+    const signButton = document.getElementById("data-packet-sign-button");
+    const signStatus = document.getElementById("data-packet-sign-status");
+    const signatureResult = document.getElementById("data-packet-signature-result");
+    const signatureJsonEl = document.getElementById("data-packet-signature-json");
+
+    // Track signature state
+    let dataPacketSignatureData = null;
+    // Store original signable objects value when URL mode is enabled
+    let originalSignableObjectsValue = "";
 
     if (
       !form ||
@@ -1075,6 +1095,60 @@
       return;
     }
 
+    // Reset signature when any relevant input changes
+    const resetSignature = () => {
+      dataPacketSignatureData = null;
+      if (signatureResult) signatureResult.hidden = true;
+      if (signatureJsonEl) signatureJsonEl.value = "";
+    };
+
+    // Generate URL descriptor and update signable objects
+    const updateSignableObjectsWithUrl = () => {
+      if (!downloadUrlInput || !signableObjectsTextarea) return;
+      const url = downloadUrlInput.value.trim();
+      const datahash = datahashInput?.value.trim() || "";
+      if (!url) {
+        signableObjectsTextarea.value = "[]";
+        return;
+      }
+      // Show the expected structure (actual generation happens on backend)
+      const preview = JSON.stringify([{
+        "version": 1,
+        "objectdata": {
+          "iP3euVSzNcXUrLNHnQnR9G6q8jeYuGSxgw": {
+            "version": 1,
+            "flags": 0,
+            "datahash": datahash,
+            "url": url,
+            "type": 2
+          }
+        }
+      }], null, 2);
+      signableObjectsTextarea.value = preview;
+    };
+
+    // Toggle datahash visibility based on both Has Signature and Has URL flags
+    const toggleDatahashVisibility = () => {
+      if (datahashGroup) {
+        const showDatahash = flagHasSignatureCheckbox?.checked && flagHasUrlCheckbox?.checked;
+        datahashGroup.hidden = !showDatahash;
+      }
+    };
+
+    // Handle mutual exclusivity between "Has Signature" and "For User's Signature"
+    const handleSignatureFlagExclusivity = (changedCheckbox) => {
+      if (changedCheckbox === flagHasSignatureCheckbox && flagHasSignatureCheckbox?.checked) {
+        if (flagForUsersSignatureCheckbox) {
+          flagForUsersSignatureCheckbox.checked = false;
+        }
+      } else if (changedCheckbox === flagForUsersSignatureCheckbox && flagForUsersSignatureCheckbox?.checked) {
+        if (flagHasSignatureCheckbox) {
+          flagHasSignatureCheckbox.checked = false;
+          resetSignature();
+        }
+      }
+    };
+
     // Toggle conditional fields based on flag checkboxes
     const toggleConditionalFields = () => {
       if (requestIdGroup) {
@@ -1082,6 +1156,45 @@
       }
       if (statementsGroup) {
         statementsGroup.hidden = !flagHasStatementsCheckbox?.checked;
+      }
+      if (signatureGroup) {
+        signatureGroup.hidden = !flagHasSignatureCheckbox?.checked;
+        // Reset signature when flag is toggled off
+        if (!flagHasSignatureCheckbox?.checked) {
+          resetSignature();
+        }
+      }
+      if (urlGroup) {
+        urlGroup.hidden = !flagHasUrlCheckbox?.checked;
+      }
+      // Handle signable objects readonly state based on URL flag
+      if (signableObjectsTextarea) {
+        const urlMode = flagHasUrlCheckbox?.checked;
+        signableObjectsTextarea.readOnly = urlMode;
+        if (urlMode) {
+          // Save original value and update with URL descriptor
+          if (!signableObjectsTextarea.hasAttribute("data-url-mode")) {
+            originalSignableObjectsValue = signableObjectsTextarea.value;
+            signableObjectsTextarea.setAttribute("data-url-mode", "true");
+          }
+          updateSignableObjectsWithUrl();
+        } else {
+          // Restore original value
+          if (signableObjectsTextarea.hasAttribute("data-url-mode")) {
+            signableObjectsTextarea.value = originalSignableObjectsValue;
+            signableObjectsTextarea.removeAttribute("data-url-mode");
+          }
+        }
+        // Update tag and help text
+        if (signableObjectsTag) {
+          signableObjectsTag.textContent = urlMode ? "auto-generated" : "optional";
+          signableObjectsTag.className = urlMode ? "tag" : "tag optional";
+        }
+        if (signableObjectsHelp) {
+          signableObjectsHelp.textContent = urlMode 
+            ? "Auto-generated from the Download URL above. Contains a CrossChainDataRef with the URL."
+            : "Array of DataDescriptor objects. Each needs: version, label, objectdata (hex), flags.";
+        }
       }
     };
 
@@ -1091,7 +1204,171 @@
     if (flagHasStatementsCheckbox) {
       flagHasStatementsCheckbox.addEventListener("change", toggleConditionalFields);
     }
+    if (flagHasSignatureCheckbox) {
+      flagHasSignatureCheckbox.addEventListener("change", () => {
+        handleSignatureFlagExclusivity(flagHasSignatureCheckbox);
+        toggleConditionalFields();
+        toggleDatahashVisibility();
+        if (flagHasUrlCheckbox?.checked) {
+          updateSignableObjectsWithUrl();
+        }
+        resetSignature();
+      });
+    }
+    if (flagForUsersSignatureCheckbox) {
+      flagForUsersSignatureCheckbox.addEventListener("change", () => {
+        handleSignatureFlagExclusivity(flagForUsersSignatureCheckbox);
+        toggleConditionalFields();
+        toggleDatahashVisibility();
+      });
+    }
+    if (flagHasUrlCheckbox) {
+      flagHasUrlCheckbox.addEventListener("change", () => {
+        toggleConditionalFields();
+        toggleDatahashVisibility();
+        resetSignature();
+      });
+    }
+    if (downloadUrlInput) {
+      downloadUrlInput.addEventListener("input", () => {
+        if (flagHasUrlCheckbox?.checked) {
+          updateSignableObjectsWithUrl();
+        }
+        resetSignature();
+      });
+    }
+    if (datahashInput) {
+      datahashInput.addEventListener("input", () => {
+        if (flagHasUrlCheckbox?.checked) {
+          updateSignableObjectsWithUrl();
+        }
+        resetSignature();
+      });
+    }
     toggleConditionalFields();
+    toggleDatahashVisibility();
+
+    // Reset signature when inputs change
+    const inputsToWatch = [
+      "data-packet-signable-objects",
+      "data-packet-statements",
+      "data-packet-request-id",
+      "data-packet-download-url",
+      "data-packet-datahash"
+    ];
+    inputsToWatch.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("input", resetSignature);
+      }
+    });
+
+    // Also reset when flag checkboxes change (except has-signature itself)
+    const flagsToWatch = [
+      "data-packet-flag-has-request-id",
+      "data-packet-flag-has-statements",
+      "data-packet-flag-for-users-signature",
+      "data-packet-flag-for-transmittal",
+      "data-packet-flag-has-url"
+    ];
+    flagsToWatch.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("change", resetSignature);
+      }
+    });
+
+    // Sign button handler
+    if (signButton) {
+      signButton.addEventListener("click", async () => {
+        clearError(errorEl);
+        if (signStatus) setStatus(signStatus, "Signing...");
+        signButton.disabled = true;
+
+        try {
+          const signingId = getGlobalSigningId();
+          if (!signingId) {
+            throw new Error("Signing ID is required (set in the global header above).");
+          }
+
+          const flagHasRequestId = isChecked("data-packet-flag-has-request-id");
+          const flagHasStatements = isChecked("data-packet-flag-has-statements");
+          const flagHasSignature = isChecked("data-packet-flag-has-signature");
+          const flagForUsersSignature = isChecked("data-packet-flag-for-users-signature");
+          const flagForTransmittalToUser = isChecked("data-packet-flag-for-transmittal");
+          const flagHasUrlForDownload = isChecked("data-packet-flag-has-url");
+
+          const signableObjectsText = getInputValue("data-packet-signable-objects");
+          const statementsText = getInputValue("data-packet-statements");
+          const requestId = getInputValue("data-packet-request-id").trim() || undefined;
+          const downloadUrl = getInputValue("data-packet-download-url").trim() || undefined;
+          const dataHash = getInputValue("data-packet-datahash").trim() || undefined;
+
+          const signableObjects = parseJsonField(signableObjectsText, "Signable Objects JSON", false);
+          const statements = parseJsonField(statementsText, "Statements JSON", false);
+
+          if (flagHasStatements && (!statements || !Array.isArray(statements) || statements.length === 0)) {
+            throw new Error("Statements are required when 'Has Statements' flag is checked.");
+          }
+
+          if (flagHasRequestId && !requestId) {
+            throw new Error("Request ID is required when 'Has Request ID' flag is checked.");
+          }
+
+          if (flagHasUrlForDownload && !downloadUrl) {
+            throw new Error("Download URL is required when 'Has URL for Download' flag is checked.");
+          }
+
+          // Validate dataHash if provided
+          if (dataHash && !/^[0-9a-fA-F]{64}$/.test(dataHash)) {
+            throw new Error("Data hash must be exactly 32 bytes (64 hex characters).");
+          }
+
+          const payload = {
+            signingId,
+            flagHasRequestId,
+            flagHasStatements,
+            flagHasSignature,
+            flagForUsersSignature,
+            flagForTransmittalToUser,
+            flagHasUrlForDownload,
+            signableObjects,
+            statements,
+            requestId,
+            downloadUrl,
+            dataHash
+          };
+
+          const response = await fetch("/api/sign-data-packet", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to sign data packet.");
+          }
+
+          dataPacketSignatureData = data.signatureData;
+          if (signatureJsonEl) {
+            signatureJsonEl.value = JSON.stringify(data.signatureData, null, 2);
+          }
+          if (signatureResult) {
+            signatureResult.hidden = false;
+          }
+          if (signStatus) setStatus(signStatus, "");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unexpected error.";
+          showError(errorEl, message);
+          if (signStatus) setStatus(signStatus, "");
+        } finally {
+          signButton.disabled = false;
+        }
+      });
+    }
 
     setupRequestIdGenerator(requestIdInput, requestIdGenerateButton, statusEl, errorEl);
 
@@ -1103,6 +1380,11 @@
       submitButton.disabled = true;
 
       try {
+        // Check if signature is required but not present
+        const flagHasSignature = isChecked("data-packet-flag-has-signature");
+        if (flagHasSignature && !dataPacketSignatureData) {
+          throw new Error("You must sign the DataPacket before generating the QR code when 'Has Signature' is checked.");
+        }
         const signingId = getGlobalSigningId();
         if (!signingId) {
           throw new Error("Signing ID is required (set in the global header above).");
@@ -1110,7 +1392,6 @@
 
         const flagHasRequestId = isChecked("data-packet-flag-has-request-id");
         const flagHasStatements = isChecked("data-packet-flag-has-statements");
-        const flagHasSignature = isChecked("data-packet-flag-has-signature");
         const flagForUsersSignature = isChecked("data-packet-flag-for-users-signature");
         const flagForTransmittalToUser = isChecked("data-packet-flag-for-transmittal");
         const flagHasUrlForDownload = isChecked("data-packet-flag-has-url");
@@ -1119,6 +1400,8 @@
         const statementsText = getInputValue("data-packet-statements");
         const requestId = getInputValue("data-packet-request-id").trim() || undefined;
         const redirectsText = getInputValue("data-packet-redirects");
+        const downloadUrl = getInputValue("data-packet-download-url").trim() || undefined;
+        const dataHash = getInputValue("data-packet-datahash").trim() || undefined;
 
         const signableObjects = parseJsonField(signableObjectsText, "Signable Objects JSON", false);
         const statements = parseJsonField(statementsText, "Statements JSON", false);
@@ -1136,6 +1419,15 @@
           throw new Error("Request ID is required when 'Has Request ID' flag is checked.");
         }
 
+        if (flagHasUrlForDownload && !downloadUrl) {
+          throw new Error("Download URL is required when 'Has URL for Download' flag is checked.");
+        }
+
+        // Validate dataHash if provided
+        if (dataHash && !/^[0-9a-fA-F]{64}$/.test(dataHash)) {
+          throw new Error("Data hash must be exactly 32 bytes (64 hex characters).");
+        }
+
         const payload = {
           signingId,
           flagHasRequestId,
@@ -1147,7 +1439,9 @@
           signableObjects,
           statements,
           requestId,
-          redirects
+          redirects,
+          downloadUrl,
+          dataHash
         };
 
         const response = await fetch("/api/generate-data-packet-qr", {
